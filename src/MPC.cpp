@@ -21,6 +21,9 @@ double dt = 0.1;
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
 
+// reference velocity
+const double ref_v = 30;
+
 class FG_eval
 {
 public:
@@ -31,27 +34,40 @@ public:
   typedef CPPAD_TESTVECTOR(AD<double>) ADvector;
   void operator()(ADvector &fg, const ADvector &vars)
   {
-    // TODO: implement MPC
-    // `fg` a vector of the cost constraints, `vars` is a vector of variable values (state & actuators)
-    // NOTE: You'll probably go back and forth between this function and
-    // the Solver function below.
-    for (int t = 1; t < N; t++)
+    // The cost is stored is the first element of `fg`.
+    // Any additions to the cost should be added to `fg[0]`.
+    fg[0] = 0;
+
+    // Cost function
+    // TODO: Define the cost related the reference state and
+    // any anything you think may be beneficial.
+    unsigned int v_start = 3 * N;
+    unsigned int cte_start = 4 * N;
+    unsigned int epsi_start = 5 * N;
+    unsigned int delta_start = 6 * N;
+    unsigned int a_start = 7 * N;
+
+    // The part of the cost based on the reference state.
+    for (int t = 0; t < N; t++)
     {
-      AD<double> x1 = vars[x_start + t];
+      fg[0] += CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += CppAD::pow(vars[epsi_start + t], 2);
+      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+    }
 
-      AD<double> x0 = vars[x_start + t - 1];
-      AD<double> psi0 = vars[psi_start + t - 1];
-      AD<double> v0 = vars[v_start + t - 1];
+    // Minimize the use of actuators.
+    for (int t = 0; t < N - 1; t++)
+    {
+      fg[0] += CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t], 2);
+    }
 
-      // Here's `x` to get you started.
-      // The idea here is to constraint this value to be 0.
-      //
-      // NOTE: The use of `AD<double>` and use of `CppAD`!
-      // This is also CppAD can compute derivatives and pass
-      // these to the solver.
-
-      // TODO: Setup the rest of the model constraints
-      fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+    // Minimize the value gap between sequential actuations.
+    // Better: minimize derivative of actuations => smoother actuations
+    for (int t = 0; t < N - 2; t++)
+    {
+      fg[0] += CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
   }
 };
@@ -73,16 +89,16 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
   // element vector and there are 10 timesteps. The number of variables is:
   //
   // 4 * 10 + 2 * 9
-  size_t n_vars = 4*N - 2*(N - 1);
+  size_t n_vars = 4 * N - 2 * (N - 1);
   // TODO: Set the number of constraints
-  size_t n_constraints = 0;
+  size_t n_constraints = 4;
 
   // Initial value of the independent variables.
   // SHOULD BE 0 besides initial state.
   Dvector vars(n_vars);
   for (int i = 0; i < n_vars; i++)
   {
-    vars[i] = 0;
+    vars[i] = 0; // TODO: the first dimensions of vars should contain initial conditions of the system?
   }
 
   Dvector vars_lowerbound(n_vars);
@@ -90,8 +106,8 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
   // TODO: Set lower and upper limits for variables.
   for (unsigned int i = 0; i < n_vars; ++i)
   {
-    vars_lowerbound(i) = ;
-    vars_upperbound(i) = ;
+    vars_lowerbound[i] = 0;
+    vars_upperbound[i] = 0;
   }
 
   // Lower and upper limits for the constraints
@@ -125,10 +141,10 @@ vector<double> MPC::Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs)
   // Change this as you see fit.
   options += "Numeric max_cpu_time          0.5\n";
 
-  // place to return solution
+  // declare variable for storing the solution; will be filled in by the solver
   CppAD::ipopt::solve_result<Dvector> solution;
 
-  // solve the problem
+  // solve the problem; call the ipopt solver from within CppAD
   CppAD::ipopt::solve<Dvector, FG_eval>(
       options, vars, vars_lowerbound, vars_upperbound, constraints_lowerbound,
       constraints_upperbound, fg_eval, solution);

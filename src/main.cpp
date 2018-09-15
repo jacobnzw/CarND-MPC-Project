@@ -114,12 +114,16 @@ int main()
           */
 
           // TODO: fit coefficients of the polynomial using waypoints
-          auto coeff = polyfit(ptsx, ptsy, 3);
-          
+          Eigen::VectorXd x = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsx.data(), ptsx.size());
+          Eigen::VectorXd y = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsy.data(), ptsy.size());
+          auto coeff = polyfit(x, y, 3);
+
           // TODO: obtain current state
-          vector<double> soln = mpc.Solve() 
-          double steer_value = soln(0);
-          double throttle_value = soln(1);
+          Eigen::VectorXd state;
+          state << px, py, psi, v;
+          vector<double> soln = mpc.Solve(state, coeff);
+          double steer_value = soln[0];
+          double throttle_value = soln[1];
 
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
