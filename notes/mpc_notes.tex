@@ -86,13 +86,15 @@ There are plenty of other, more accurate, methods for ODE integration, such as R
 
 \section{Kinematic Bicycle Model}\label{sec:kinematic_bicycle_model}
 This is the kinematic bicycle model
+\begin{subequations}
 \begin{align}\label{eq:kinematic_bicycle_model_continuous}
-	\dot{x} 	&=  v \cos(\psi + \beta) \\
-	\dot{y} 	&=  v \sin(\psi + \beta) \\
-	\dot{\psi} 	&=  \frac{v}{l_r} \sin(\beta) \\
-	\dot{v} 	&=  a \\
-	\dot{\beta} &= \arctan\left(\frac{l_r}{l_r + l_f}\tan(\delta_f)\right)
+\dot{x} 	&=  v \cos(\psi + \beta) \\
+\dot{y} 	&=  v \sin(\psi + \beta) \\
+\dot{\psi} 	&=  \frac{v}{l_r} \sin(\beta) \\
+\dot{v} 	&=  a \\
+\dot{\beta} &= \arctan\left(\frac{l_r}{l_r + l_f}\tan(\delta_f)\right)
 \end{align}
+\end{subequations}
 The \Cref{fig:kinematic_bicycle_model}, stolen from \cite{Kong2015}, depicts the geometric meaning of the variables involved.
 \begin{figure}[h]
 	\centering
@@ -102,19 +104,23 @@ The \Cref{fig:kinematic_bicycle_model}, stolen from \cite{Kong2015}, depicts the
 \end{figure}
 
 For some undisclosed reason, at Udacity, we are using a simplified version, given by
+\begin{subequations}
 \begin{align}\label{eq:kinematic_bicycle_model_continuous_udacity}
 \dot{x} 	&=  v \cos(\psi) \\
 \dot{y} 	&=  v \sin(\psi) \\
 \dot{\psi} 	&=  \frac{v}{l_r} \delta_f \\
 \dot{v} 	&=  a \\
 \end{align}
+\end{subequations}
 Applying the Euler method from \Cref{sec:euler_method} yields the familiar equations
+\begin{subequations}
 \begin{align}\label{eq:kinematic_bicycle_model_discrete_udacity}
 x_{k+1} 	&= x_k + v_k\cos(\psi_k) \mathrm{d}t \\
 y_{k+1} 	&= y_k + v_k\sin(\psi_k) \mathrm{d}t \\
 \psi_{k+1} 	&= \psi_k + \frac{v_k}{l_r}\delta_f \mathrm{d}t \\
 v_{k+1} 	&= v_k + a_k*\mathrm{d}t \\
 \end{align}
+\end{subequations}
 where the \( \mathrm{d}t \) is the discretization step size.
 
 
@@ -122,6 +128,23 @@ where the \( \mathrm{d}t \) is the discretization step size.
 
 \section{Model Predictive Control}\label{sec:model_predictive_control}
 
+How the model is extended with cross-track error and heading error variables?
+Cross-track error
+Tangential angle
+
+
+
+Minimize cost function subject to constraints\footnote{Constraints are limits on \emph{relationships} between values.}
+\begin{equation}\label{key}
+	u_{k:k+N} = \arg\min_{u_{k:k+N}} J(u_k),
+\end{equation}
+subject to constraints given by the equations of dynamics [...]
+
+
+and bounds\footnote{Bounds are absolute limits on the range of values.} on the actuation variables
+\begin{equation}\label{eq:mpc_actuation_bounds}
+	-1 \leq \alpha \leq 1 ,\qquad \SI{-25}{\degree} \leq \delta_f \leq \SI{25}{\degree}
+\end{equation}
 
 
 
