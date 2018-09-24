@@ -153,8 +153,22 @@ Let's think about error for a moment.
 Whenever we talk about error, we implicitly assume that there is some intended ground-truth value from which we departed - the error, therefore, expresses the difference between the desired (intended, reference) value and the actual value.
 Let's write this formally as \( \tilde{y}_k = y_k - y^r_k \) and \( \tilde{\psi}_k = \psi_k - \psi^r_k \), where \( y^r_k \) and \( \psi^r_k \) are the reference values.
 These errors arise, because the world is not perfect - actuators have their limitations, the environment is not completely predictable, the numerical noise in calculations, communication delays on the sensor network, approximative assumptions in the modeling of the vehicle motion, etc.
-The reference trajectory is presumably supplied by the path planner module, which we haven't covered yet in the Term 3. 
+The reference trajectory is supplied by the path planner module, which we haven't covered yet in the Term 3. 
 For the purposes of the MPC project, the reference trajectory is created by fitting a polynomial to the supplied waypoints.
+
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\columnwidth]{./img/control_loop.png}
+	\caption{Classical control loop.}
+\end{figure}
+
+\begin{figure}
+	\centering
+	\includegraphics[width=\columnwidth]{./img/mpc_control_loop.png}
+	\caption{Model predictive control loop.}
+\end{figure}
+
 
 
 \textbf{Cross-Track Error} \\
