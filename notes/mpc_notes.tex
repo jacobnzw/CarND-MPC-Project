@@ -139,59 +139,90 @@ The control vector \( \bm{u}_k = \left[a_k,\ \delta_k\right]^\top \) contains th
 
 \section{Model Predictive Control}\label{sec:model_predictive_control}
 The goal of the controller is to determine optimal values of the control variables at each time step, such that the specified optimality criteria\footnote{Such as, "don't jerk the steering wheel too fast", or "keep the speed limit while performing the maneuver", or "minimize the expended energy for actuating the control command".} are met.
-
-Before applying the MPC algorithm, we will extend the state-space with a cross-track error \( \tilde{y}_k \) and heading error \( \tilde{\psi}_k \) variables, so that the state is now \( \bm{x}_k = \big[x_k,\ y_k,\ \psi_k,\ v_k,\ \tilde{y}_k,\ \tilde{\psi}_k \big]^\top \) and the model becomes
-\begin{align}\label{eq:mpc_ssm_extended}
-	x_{k+1} 			&= x_k + v_k\cos(\psi_k) \mathrm{d}t \\
-	y_{k+1} 			&= y_k + v_k\sin(\psi_k) \mathrm{d}t \\
-	\psi_{k+1} 			&= \psi_k + \frac{v_k}{l_f}\delta_k \mathrm{d}t \\
-	v_{k+1} 			&= v_k + a_k\mathrm{d}t \\
-	\tilde{y}_{k+1}		&= \tilde{y}_k + v_k\sin(\tilde{\psi}_k)\mathrm{d}t \\
-	\tilde{\psi}_{k+1}	&= \tilde{\psi}_{k} + \frac{v_k}{l_f} \delta_k \mathrm{d}t
-\end{align}
-Let's think about error for a moment. 
-Whenever we talk about error, we implicitly assume that there is some intended ground-truth value from which we departed - the error, therefore, expresses the difference between the desired (intended, reference) value and the actual value.
-Let's write this formally as \( \tilde{y}_k = y_k - y^r_k \) and \( \tilde{\psi}_k = \psi_k - \psi^r_k \), where \( y^r_k \) and \( \psi^r_k \) are the reference values.
-These errors arise, because the world is not perfect - actuators have their limitations, the environment is not completely predictable, the numerical noise in calculations, communication delays on the sensor network, approximative assumptions in the modeling of the vehicle motion, etc.
-The reference trajectory is supplied by the path planner module, which we haven't covered yet in the Term 3. 
-For the purposes of the MPC project, the reference trajectory is created by fitting a polynomial to the supplied waypoints.
-
-
-\begin{figure}
+If you're familiar with classical control theory, you've surely seen the feedback control loop depicted in \Cref{fig:classical_control_loop}.
+\begin{figure}[h]
 	\centering
 	\includegraphics[width=\columnwidth]{./img/control_loop.png}
 	\caption{Classical control loop.}
+	\label{fig:classical_control_loop}
 \end{figure}
+It won't come as a surprise that the MPC follows the same general idea of the feedback loop\footnote{After all, feedback is the basic principle of cybernetics. Without feedback, there is no control.}.
 
-\begin{figure}
+Before applying the MPC algorithm, we will extend the state-space with a cross-track error \( \tilde{y}_k \) and heading error \( \tilde{\psi}_k \) variables, so that the state is now \( \bm{x}_k = \big[x_k,\ y_k,\ \psi_k,\ v_k,\ \tilde{y}_k,\ \tilde{\psi}_k \big]^\top \) and the model becomes
+\begin{subequations}
+\begin{align}
+x_{k+1} 			&= x_k + v_k\cos(\psi_k) \mathrm{d}t \label{eq:kbm_start}\\
+y_{k+1} 			&= y_k + v_k\sin(\psi_k) \mathrm{d}t \\
+\psi_{k+1} 			&= \psi_k + \frac{v_k}{l_f}\delta_k \mathrm{d}t \\
+v_{k+1} 			&= v_k + a_k\mathrm{d}t \\
+\tilde{y}_{k+1}		&= \tilde{y}_k + v_k\sin(\tilde{\psi}_k)\mathrm{d}t \\
+\tilde{\psi}_{k+1}	&= \tilde{\psi}_{k} + \frac{v_k}{l_f} \delta_k \mathrm{d}t \label{eq:kbm_end}
+\end{align}
+\end{subequations}
+Let's think about error for a moment. 
+Whenever we talk about error, we implicitly assume that there is some intended ground-truth value from which we departed - the error, therefore, expresses the difference between the desired (intended, reference) value and the actual value.
+These errors arise, because the world is not perfect - actuators have their limitations, the environment is not completely predictable, there is numerical noise in calculations, communication delays on the sensor network, approximative assumptions in the modeling of the vehicle motion, etc.
+The reference trajectory is supplied by the path planner module, which we haven't covered yet in the Term 3. 
+For the purposes of the MPC project, the reference trajectory is created by fitting a polynomial to the supplied waypoints.
+
+Let's define the cross-track error \( \tilde{y}_k = y_k - y^r_k \) and the heading error \( \tilde{\psi}_k = \psi_k - \psi^r_k \), where \( y^r_k \) and \( \psi^r_k \) are the reference values.
+\Cref{fig:errors} shows that the reference heading at any time step \( \psi^r_k \) is the tangential angle at the point \( x_k \) of the reference trajectory \( f(x_k) \).
+We know that the slope of the tangential line at \( x_k \) is given by the derivative evaluated at that point, so \( f'(x_k) = \tan(\psi^r_k) \) and thus the reference heading can be expressed as \( \psi^r_k = \arctan( f'(x_k) ) \).
+The derivative \( f'(x_k) \) depends on which model we use for fitting the reference trajectory (when \( f \) is polynomial, derivatives are trivially obtained.)
+\begin{figure}[h]
 	\centering
-	\includegraphics[width=\columnwidth]{./img/mpc_control_loop.png}
-	\caption{Model predictive control loop.}
+	\includegraphics[width=0.5\columnwidth]{./img/errors.png}
+	\caption{Cross-track error \( \tilde{y}_k = y_k - y^r_k \) and heading error \( \tilde{\psi}_k = \psi_k - \psi^r_k \). The reference track curve fit in red.}
+	\label{fig:errors}
 \end{figure}
-
-
-
-\textbf{Cross-Track Error} \\
-
-\textbf{Heading Error} \\
-
-
-Cross-track error
-Tangential angle
-
-
 
 Minimize cost function\footnote{Since \( J \) depends on the sequence of variables (which is a discretized function anyway), it is, strictly speaking, a \emph{functional}.} subject to constraints\footnote{Constraints are limits on \emph{relationships} between values.}
-\begin{equation}\label{key}
-	u_{k:k+N} = \arg\min_{u_{k:k+N}} J(u_k),
+
+Recall that, the state \( \bm{x}_k \), the control action \( \bm{u}_k \) and the reference input \( \bm{r}_k \) are defined as
+\begin{align}
+	\bm{x}_k &= \big[x_k,\ y_k,\ \psi_k,\ v_k,\ \tilde{y}_k,\ \tilde{\psi}_k \big]^\top \\
+	\bm{u}_k &= \big[a_k,\ \delta_k\big]^\top \\
+	\bm{r}_k &= \big[y^r_k,\ \psi^r_k \big]^\top
+\end{align}
+Let the state sequence for \( N \) time steps forward be denoted as 
+\begin{equation}
+	\bm{x}_{k:k+N} \triangleq \big[ \bm{x}_k,\ \bm{x}_{k+1},\ \ldots,\ \bm{x}_{k+N} \big]
 \end{equation}
-subject to constraints given by the equations of dynamics [...]
-
-
-and bounds\footnote{Bounds are absolute limits on the range of values.} on the actuation variables
+and analogously for sequence control actions \(  \bm{u}_{k:k+N} \) and reference inputs \( \bm{r}_{k:k+N} \).
+The model predictive control computes the optimal sequence of control actions for \( N \) steps ahead by solving the following minimization problem
+\begin{equation}
+u_{k:k+N} = \arg\min_{u_{k:k+N}} J(\bm{x}_{k:k+N}, \bm{u}_{k:k+N}, \bm{r}_{k:k+N}, N),
+\end{equation}
+subject to constraints given by the kinematic bicycle model (plant model) in \crefrange{eq:kbm_start}{eq:kbm_end} and bounds\footnote{Bounds are absolute limits on the range of values.} on the actuation variables
 \begin{equation}\label{eq:mpc_actuation_bounds}
-	-1 \leq \alpha \leq 1 ,\qquad \SI{-25}{\degree} \leq \delta_f \leq \SI{25}{\degree}
+-1 \leq \alpha \leq 1 ,\qquad \SI{-25}{\degree} \leq \delta_f \leq \SI{25}{\degree}.
 \end{equation}
+The hyper-parameter \( N \) is referred to as the prediction horizon.
+
+An example cost function used in MPC with our kinematic bicycle model might look something like this
+\begin{equation}\label{eq:mpc_cost_simple}
+	J(\bm{x}_{k:k+N}, \bm{u}_{k:k+N}, \bm{r}_{k:k+N}, N) = \sum_{k=1}^{N} (\tilde{y}_k)^2.
+\end{equation}
+Minimizing this functional yields control actions, for which the cross-track error squared is minimal.
+As you can probably guess, the heading error \( \tilde{\psi}_k \) is not reflected in the cost function, which means we can't expect it to be small after minimization.
+Besides that, there are other desirable properties that we would like the resulting control sequence to have, such as minimum energy expenditure, smooth steering etc.
+All of these, and more, can be incorporated by tinkering with the cost function.
+A more realistic cost might look something like this
+\begin{equation}\label{eq:mpc_cost_better}
+	J(\bm{x}_{k:k+N}, \bm{u}_{k:k+N}, \bm{r}_{k:k+N}, N) = \sum_{k=1}^{N} (\tilde{y}_k)^2 + (\tilde{\psi}_k)^2 + (\delta_k)^2+ \sum_{k=1}^{N-1} (\delta_{k+1} - \delta_k)^2.
+\end{equation}
+This accounts for the energy expended on the steering \( \delta_k^2 \) as well as smooth steering transitions \( (\delta_{k+1} - \delta_k)^2 \).
+\Cref{fig:mpc_control_loop} outlines the model predictive control loop and role of the variables involved.
+\begin{figure}[h]
+	\centering
+	\includegraphics[width=0.8\columnwidth]{./img/mpc_control_loop.png}
+	\caption{Model predictive control loop.}
+	\label{fig:mpc_control_loop}
+\end{figure}
+
+
+
+
 
 
 
