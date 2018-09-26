@@ -92,7 +92,7 @@ This is the kinematic bicycle model
 \dot{y} 	&=  v \sin(\psi + \beta) \\
 \dot{\psi} 	&=  \frac{v}{l_r} \sin(\beta) \\
 \dot{v} 	&=  a \\
-\dot{\beta} &= \arctan\left(\frac{l_r}{l_r + l_f}\tan(\delta)\right)
+\dot{\beta} &= \arctan\left(\frac{l_r}{l_r + l_f}\tan(\delta_f)\right)
 \end{align}
 \end{subequations}
 Note, that the Cartesian position \( x,\ y \), the speed\footnote{a.k.a. velocity magnitude} \( v \), the inertial heading angle \( \psi \), the angle of the current velocity \( \beta \), the steering angle \( \delta \triangleq \delta_f \) and acceleration \( a \) are all functions of time.
@@ -191,7 +191,7 @@ Let the state sequence for \( N \) time steps forward be denoted as
 and analogously for sequence control actions \(  \bm{u}_{k:k+N} \) and reference inputs \( \bm{r}_{k:k+N} \).
 The model predictive control computes the optimal sequence of control actions for \( N \) steps ahead by solving the following minimization problem
 \begin{equation}
-u_{k:k+N} = \arg\min_{u_{k:k+N}} J(\bm{x}_{k:k+N}, \bm{u}_{k:k+N}, \bm{r}_{k:k+N}, N),
+u_{k:k+N} = \arg\min_{u_{k:k+N}} J(\bm{u}_{k:k+N};\, \bm{x}_{k:k+N},\ \bm{r}_{k:k+N},\, N),
 \end{equation}
 subject to constraints given by the kinematic bicycle model (plant model) in \crefrange{eq:kbm_start}{eq:kbm_end} and bounds\footnote{Bounds are absolute limits on the range of values.} on the actuation variables
 \begin{equation}\label{eq:mpc_actuation_bounds}
@@ -201,7 +201,7 @@ The hyper-parameter \( N \) is referred to as the prediction horizon.
 
 An example cost function used in MPC with our kinematic bicycle model might look something like this
 \begin{equation}\label{eq:mpc_cost_simple}
-	J(\bm{x}_{k:k+N}, \bm{u}_{k:k+N}, \bm{r}_{k:k+N}, N) = \sum_{k=1}^{N} (\tilde{y}_k)^2.
+	J(\bm{u}_{k:k+N};\, \bm{x}_{k:k+N},\, \bm{r}_{k:k+N},\, N) = \sum_{k=1}^{N} (\tilde{y}_k)^2.
 \end{equation}
 Minimizing this functional yields control actions, for which the cross-track error squared is minimal.
 As you can probably guess, the heading error \( \tilde{\psi}_k \) is not reflected in the cost function, which means we can't expect it to be small after minimization.
@@ -209,7 +209,7 @@ Besides that, there are other desirable properties that we would like the result
 All of these, and more, can be incorporated by tinkering with the cost function.
 A more realistic cost might look something like this
 \begin{equation}\label{eq:mpc_cost_better}
-	J(\bm{x}_{k:k+N}, \bm{u}_{k:k+N}, \bm{r}_{k:k+N}, N) = \sum_{k=1}^{N} (\tilde{y}_k)^2 + (\tilde{\psi}_k)^2 + (\delta_k)^2+ \sum_{k=1}^{N-1} (\delta_{k+1} - \delta_k)^2.
+	J(\bm{u}_{k:k+N};\, \bm{x}_{k:k+N},\, \bm{r}_{k:k+N},\, N) = \sum_{k=1}^{N} (\tilde{y}_k)^2 + (\tilde{\psi}_k)^2 + (\delta_k)^2+ \sum_{k=1}^{N-1} (\delta_{k+1} - \delta_k)^2.
 \end{equation}
 This accounts for the energy expended on the steering \( \delta_k^2 \) as well as smooth steering transitions \( (\delta_{k+1} - \delta_k)^2 \).
 \Cref{fig:mpc_control_loop} outlines the model predictive control loop and role of the variables involved.

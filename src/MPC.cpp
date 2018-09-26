@@ -24,9 +24,10 @@ const double Lf = 2.67;
 // reference velocity
 const double ref_v = 50;
 
-size_t x_start      = 0;
-size_t y_start      = 1*N;
-size_t psi_start    = 2*N;
+// starting indices dividing the vector in the search space into logical segments
+size_t x_start      = 0;    // sequence of x coordinates for N steps starts at 0
+size_t y_start      = 1*N;  // sequence of y coordinates for N steps starts at N
+size_t psi_start    = 2*N;  // etc.
 size_t v_start      = 3*N;
 size_t cte_start    = 4*N;
 size_t epsi_start   = 5*N;
