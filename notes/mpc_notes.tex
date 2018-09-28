@@ -1,8 +1,9 @@
 \documentclass[a4paper]{article}
-
-\usepackage[english]{babel}
 \usepackage[T1]{fontenc}  			% make sure to install cm-super package for improved PDF quality
 \usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[english]{babel}
+
 %\usepackage[cm]{fullpage}			% Fullpage for now
 \usepackage{graphicx}
 \usepackage[dvipsnames]{xcolor}
@@ -34,7 +35,7 @@
 %\usepackage{cite}
 %\usepackage{citesort}
 \usepackage[square, sort, numbers, authoryear]{natbib}
-\usepackage{pgfplots}
+%\usepackage{pgfplots}
 
 
 \begin{document}
@@ -176,8 +177,6 @@ The derivative \( f'(x_k) \) depends on which model we use for fitting the refer
 	\label{fig:errors}
 \end{figure}
 
-Minimize cost function\footnote{Since \( J \) depends on the sequence of variables (which is a discretized function anyway), it is, strictly speaking, a \emph{functional}.} subject to constraints\footnote{Constraints are limits on \emph{relationships} between values.}
-
 Recall that, the state \( \bm{x}_k \), the control action \( \bm{u}_k \) and the reference input \( \bm{r}_k \) are defined as
 \begin{align}
 	\bm{x}_k &= \big[x_k,\ y_k,\ \psi_k,\ v_k,\ \tilde{y}_k,\ \tilde{\psi}_k \big]^\top \\
@@ -189,11 +188,11 @@ Let the state sequence for \( N \) time steps forward be denoted as
 	\bm{x}_{k:k+N} \triangleq \big[ \bm{x}_k,\ \bm{x}_{k+1},\ \ldots,\ \bm{x}_{k+N} \big]
 \end{equation}
 and analogously for sequence control actions \(  \bm{u}_{k:k+N} \) and reference inputs \( \bm{r}_{k:k+N} \).
-The model predictive control computes the optimal sequence of control actions for \( N \) steps ahead by solving the following minimization problem
+The model predictive control computes the optimal sequence of control actions for \( N \) steps ahead by minimizing the cost function\footnote{Since \( J \) depends on the sequence of variables (which is a discretized function anyway), it is, strictly speaking, a \emph{functional}.}
 \begin{equation}
 u_{k:k+N} = \arg\min_{u_{k:k+N}} J(\bm{u}_{k:k+N};\, \bm{x}_{k:k+N},\ \bm{r}_{k:k+N},\, N),
 \end{equation}
-subject to constraints given by the kinematic bicycle model (plant model) in \crefrange{eq:kbm_start}{eq:kbm_end} and bounds\footnote{Bounds are absolute limits on the range of values.} on the actuation variables
+subject to constraints\footnote{Constraints are limits on \emph{relationships} between values.} given by the kinematic bicycle model (plant model) in \crefrange{eq:kbm_start}{eq:kbm_end} and bounds\footnote{Bounds are absolute limits on the range of values.} on the actuation variables
 \begin{equation}\label{eq:mpc_actuation_bounds}
 -1 \leq \alpha \leq 1 ,\qquad \SI{-25}{\degree} \leq \delta_f \leq \SI{25}{\degree}.
 \end{equation}
@@ -221,8 +220,43 @@ This accounts for the energy expended on the steering \( \delta_k^2 \) as well a
 \end{figure}
 
 
+\section{Implementation}
+In my implementation of the MPC, I'm using the cost function 
+\begin{align}\label{eq:mpc_my_cost}
+	J(\bm{u}_{k:k+N}) 
+	&= \sum_{k=1}^{N} w_{cte}\tilde{y}_k^2 + w_{he}\tilde{\psi}_k^2 + w_{v}\tilde{v}_k + w_{\delta}\delta_k^2  + w_{a}a_k^2 + \nonumber \\
+	&\mathrel{\phantom{=}} \sum_{k=1}^{N-1} w_{\delta t}(\delta_{k+1} - \delta_k)^2 + w_a(a_{k+1} - a_k)^2,
+\end{align}
+where $ \tilde{v}_k = (v_k - v^r) $ and $ v^r = \SI{70}{mph} $ is the reference speed.
+The weights in the cost function achieving the desired control behavior, were determined experimentally to be
+\begin{align}\label{key}
+w_{cte} = 1000,\ w_{he} = 2000,\  w_{v} = 2,\ w_{\delta} = 50,\ \ w_{a} = 5,\ w_{\delta t} = 2000,\ w_{\delta a} = 10.
+\end{align}
+During the experiments, I initially stuck with prediction horizon $ N = 10 $, but eventually went down to $ N = 7 $.
+As that didn't give satisfactory car behavior I went up to $ N = 8 $, which exhibited the best control behavior at the chosen reference speed and seemed like a good trade-off between the computational load and the quality of the result.
+I saw no need to fiddle with the discretization period, so I stuck to $ \mathrm{d}t = \SI{0.1}{s} $.
 
-
+The reference car position $ y^r $ and heading $ \psi^r $ are determined from the 3rd-degree polynomial fit to the waypoints.
+The polynomial model and it's derivative are given by
+\begin{align}\label{eq:trajectory_polynomial}
+	f(x_k) 	&= a_3x_k^3 + a_2x_k^2 + a_1x_k + a_0, \\
+	f'(x_k) &= 3a_3x_k^2 + 2a_2x_k + a_1.
+\end{align}
+Since we are fitting the model in the car's coordinates, where $ x_k = 0,\ y_k = 0 $.
+Using the reasoning from the previous sections, the reference position and heading are given by
+\begin{align}\label{}
+y^r_k 		&= f(0) = a_0, \\
+\psi^r_k	&= \arctan(f'(0)) = \arctan(a_1),
+\end{align}
+and the cross-track error and heading error thus become
+\begin{align}\label{}
+	\tilde{y}_k 	&= y_k - y^r_k = -a_0,	\\
+	\tilde{\psi}_k 	&= \psi_k - \psi^r_k = -\arctan(a_1).
+\end{align}
+So, at every time step, the optimization is started with the initial state (which is part of the constraints given by the kinematic bicycle model)
+\begin{equation}\label{}
+	\bm{x}_k = \left[ 0,\ 0,\ 0,\ v,\ \tilde{y}_k,\ \tilde{\psi}_k \right].
+\end{equation}
 
 
 
