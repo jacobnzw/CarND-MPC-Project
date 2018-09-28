@@ -5,8 +5,8 @@
 
 using CppAD::AD;
 
-// TODO: Set the timestep length and duration
-size_t N = 10;
+// timestep length and duration
+size_t N = 8;
 double dt = 0.1;
 
 // This value assumes the model presented in the classroom is used.
@@ -22,7 +22,7 @@ double dt = 0.1;
 const double Lf = 2.67;
 
 // reference velocity
-const double ref_v = 50;
+const double ref_v = 70;
 
 // starting indices dividing the vector in the search space into logical segments
 size_t x_start      = 0;    // sequence of x coordinates for N steps starts at 0
@@ -51,15 +51,15 @@ public:
     // The part of the cost based on the reference state.
     for (t = 0; t < N; t++)
     {
-      fg[0] += 2000 * CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 1000 * CppAD::pow(vars[cte_start + t], 2);
       fg[0] += 2000 * CppAD::pow(vars[epsi_start + t], 2);
-      fg[0] += CppAD::pow(vars[v_start + t] - ref_v, 2);
+      fg[0] += 2 * CppAD::pow(vars[v_start + t] - ref_v, 2);
     }
 
     // Minimize the use of actuators.
     for (t = 0; t < N - 1; t++)
     {
-      fg[0] += 5 * CppAD::pow(vars[delta_start + t], 2);
+      fg[0] += 50 * CppAD::pow(vars[delta_start + t], 2);
       fg[0] += 5 * CppAD::pow(vars[a_start + t], 2);
     }
 
@@ -67,7 +67,7 @@ public:
     // Better: minimize derivative of actuations => smoother actuations
     for (t = 0; t < N - 2; t++)
     {
-      fg[0] += 200 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
+      fg[0] += 2000 * CppAD::pow(vars[delta_start + t + 1] - vars[delta_start + t], 2);
       fg[0] += 10 * CppAD::pow(vars[a_start + t + 1] - vars[a_start + t], 2);
     }
 
