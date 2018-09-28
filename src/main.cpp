@@ -99,30 +99,30 @@ int main()
         if (event == "telemetry")
         {
           // j[1] is the data JSON object
-          vector<double> ptsx = j[1]["ptsx"];
-          vector<double> ptsy = j[1]["ptsy"];
-          double px = j[1]["x"];
-          double py = j[1]["y"];
-          double psi = j[1]["psi"];
-          double v = j[1]["speed"];
+          vector<double> ptsx = j[1]["ptsx"];   // x-coordinates of the waypoints in map frame
+          vector<double> ptsy = j[1]["ptsy"];   // y-coordinates ...
+          double px = j[1]["x"];      // x-coordinate of the car in map frame
+          double py = j[1]["y"];      // y-coordinate ...
+          double psi = j[1]["psi"];   // car's heading angle
+          double v = j[1]["speed"];   // car's speed in mph
 
-          // TODO: Write a LaTex document summarizing my understanding of the MPC problem!
-          
-          // Fit coefficients of the polynomial using waypoints
+          // Transform waypoints from map frame to car frame
           for (unsigned int i = 0; i < ptsx.size(); ++i)
           {
             double shift_x = ptsx[i] - px;
             double shift_y = ptsy[i] - py;
-            ptsx[i] = shift_x * cos(0 - psi) - shift_y * sin(0 - psi);
-            ptsy[i] = shift_x * sin(0 - psi) + shift_y * cos(0 - psi);
+            ptsx[i] = shift_x * cos(-psi) - shift_y * sin(-psi);
+            ptsy[i] = shift_x * sin(-psi) + shift_y * cos(-psi);
           }
           Eigen::VectorXd x = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsx.data(), ptsx.size());
           Eigen::VectorXd y = Eigen::Map<Eigen::VectorXd, Eigen::Unaligned>(ptsy.data(), ptsy.size());
+          // Fit waypoint trajectory using a 3-rd degree polynomial in car frame
           auto coeff = polyfit(x, y, 3);
 
           // Create initial state
+          // car's position [x, y] and heading psi in car frame are always = 0
           double cte = polyeval(coeff, 0);
-          double epsi = -atan(coeff[1]);
+          double epsi = -atan(coeff[1]);    // f'(x) = 3*a_3*x^2 + 2*a_2*x + a_1  ==> f'(0) = a_1
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
           
