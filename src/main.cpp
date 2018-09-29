@@ -50,8 +50,7 @@ double polyeval(Eigen::VectorXd coeffs, double x)
 // Fit a polynomial.
 // Adapted from
 // https://github.com/JuliaMath/Polynomials.jl/blob/master/src/Polynomials.jl#L676-L716
-Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
-                        int order)
+Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals, int order)
 {
   assert(xvals.size() == yvals.size());
   assert(order >= 1 && order <= xvals.size() - 1);
@@ -82,8 +81,11 @@ int main()
   // MPC is initialized here!
   MPC mpc;
 
-  h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
-                     uWS::OpCode opCode) {
+  // storing last control inputs for latency compensation
+  double last_a = 0;
+  double last_delta = 0;
+
+  h.onMessage([&mpc, &last_a, &last_delta](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -106,6 +108,14 @@ int main()
           double psi = j[1]["psi"];   // car's heading angle
           double v = j[1]["speed"];   // car's speed in mph
 
+          const short MPC_DT = 0.1;  // actuator latency in seconds
+          const double Lf = 2.67;
+          // account for actuator latency by projecting the state MPC_DT miliseconds into the future
+          px += v*cos(psi)*MPC_DT;
+          py += v*sin(psi)*MPC_DT;
+          psi += v/Lf*last_delta*MPC_DT;
+          v += last_a*MPC_DT;
+
           // Transform waypoints from map frame to car frame
           for (unsigned int i = 0; i < ptsx.size(); ++i)
           {
@@ -125,6 +135,12 @@ int main()
           double epsi = -atan(coeff[1]);    // f'(x) = 3*a_3*x^2 + 2*a_2*x + a_1  ==> f'(0) = a_1
           Eigen::VectorXd state(6);
           state << 0, 0, 0, v, cte, epsi;
+
+          // account for actuator latency by projecting the state MPC_DT miliseconds into the future
+          // state[0] += v*cos(state[2])*MPC_DT;
+          // state[1] += v*sin(state[2])*MPC_DT;
+          // state[2] += v/Lf*0*MPC_DT;
+          // state[3] += 0*MPC_DT;
           
           // Calculate steering angle and throttle using MPC.
           vector<double> soln = mpc.Solve(state, coeff);
@@ -132,8 +148,12 @@ int main()
           json msgJson;
           // NOTE: Remember to divide by deg2rad(25) before you send the steering value back.
           // Otherwise the values will be in between [-deg2rad(25), deg2rad(25] instead of [-1, 1].
-          msgJson["steering_angle"] = soln[0] / (deg2rad(25)*2.67);;
+          msgJson["steering_angle"] = soln[0] / (deg2rad(25)*Lf);;
           msgJson["throttle"] = soln[1];
+
+          // save control inputs for latency compensation
+          last_delta = msgJson["steering_angle"];
+          last_a = msgJson["throttle"];
 
           //Display the MPC predicted trajectory
           vector<double> mpc_x_vals;
@@ -174,7 +194,7 @@ int main()
           
           // Artificial latency: simulates communication delays in the car network.
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(chrono::milliseconds(1000*MPC_DT));
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       }

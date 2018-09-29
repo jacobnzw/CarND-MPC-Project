@@ -22,7 +22,7 @@ double dt = 0.1;
 const double Lf = 2.67;
 
 // reference velocity
-const double ref_v = 70;
+const double ref_v = 100;
 
 // starting indices dividing the vector in the search space into logical segments
 size_t x_start      = 0;    // sequence of x coordinates for N steps starts at 0
@@ -51,7 +51,7 @@ public:
     // The part of the cost based on the reference state.
     for (t = 0; t < N; t++)
     {
-      fg[0] += 1000 * CppAD::pow(vars[cte_start + t], 2);
+      fg[0] += 1500 * CppAD::pow(vars[cte_start + t], 2);
       fg[0] += 2000 * CppAD::pow(vars[epsi_start + t], 2);
       fg[0] += 2 * CppAD::pow(vars[v_start + t] - ref_v, 2);
     }
