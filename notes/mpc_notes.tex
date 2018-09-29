@@ -224,13 +224,13 @@ This accounts for the energy expended on the steering \( \delta_k^2 \) as well a
 In my implementation of the MPC, I'm using the cost function 
 \begin{align}\label{eq:mpc_my_cost}
 	J(\bm{u}_{k:k+N}) 
-	&= \sum_{k=1}^{N} w_{cte}\tilde{y}_k^2 + w_{he}\tilde{\psi}_k^2 + w_{v}\tilde{v}_k + w_{\delta}\delta_k^2  + w_{a}a_k^2 + \nonumber \\
+	&= \sum_{k=1}^{N} w_{cte}\tilde{y}_k^2 + w_{he}\tilde{\psi}_k^2 + w_{v}\tilde{v}_k^2 + w_{\delta}\delta_k^2  + w_{a}a_k^2 + \nonumber \\
 	&\mathrel{\phantom{=}} \sum_{k=1}^{N-1} w_{\delta t}(\delta_{k+1} - \delta_k)^2 + w_a(a_{k+1} - a_k)^2,
 \end{align}
-where $ \tilde{v}_k = (v_k - v^r) $ and $ v^r = \SI{70}{mph} $ is the reference speed.
+where $ \tilde{v}_k = (v_k - v^r) $ and $ v^r = \SI{100}{mph} $ is the reference speed.
 The weights in the cost function achieving the desired control behavior, were determined experimentally to be
 \begin{align}\label{key}
-w_{cte} = 1000,\ w_{he} = 2000,\  w_{v} = 2,\ w_{\delta} = 50,\ \ w_{a} = 5,\ w_{\delta t} = 2000,\ w_{\delta a} = 10.
+w_{cte} = 1500,\ w_{he} = 2000,\  w_{v} = 2,\ w_{\delta} = 50,\ \ w_{a} = 5,\ w_{\delta t} = 2000,\ w_{\delta a} = 10.
 \end{align}
 During the experiments, I initially stuck with prediction horizon $ N = 10 $, but eventually went down to $ N = 7 $.
 As that didn't give satisfactory car behavior I went up to $ N = 8 $, which exhibited the best control behavior at the chosen reference speed and seemed like a good trade-off between the computational load and the quality of the result.
@@ -242,8 +242,8 @@ The polynomial model and it's derivative are given by
 	f(x_k) 	&= a_3x_k^3 + a_2x_k^2 + a_1x_k + a_0, \\
 	f'(x_k) &= 3a_3x_k^2 + 2a_2x_k + a_1.
 \end{align}
-Since we are fitting the model in the car's coordinates, where $ x_k = 0,\ y_k = 0 $.
-Using the reasoning from the previous sections, the reference position and heading are given by
+Before fitting the model, the current state is projected \SI{100}{ms} into the future to account for the actuation delay and then it is transformed into the car's coordinate system (where the car's position coordinates and the heading are always zero).
+With the fitted polynomial, we can use the reasoning from the previous sections, to determine the reference position and heading as
 \begin{align}\label{}
 y^r_k 		&= f(0) = a_0, \\
 \psi^r_k	&= \arctan(f'(0)) = \arctan(a_1),
@@ -253,7 +253,7 @@ and the cross-track error and heading error thus become
 	\tilde{y}_k 	&= y_k - y^r_k = -a_0,	\\
 	\tilde{\psi}_k 	&= \psi_k - \psi^r_k = -\arctan(a_1).
 \end{align}
-So, at every time step, the optimization is started with the initial state (which is part of the constraints given by the kinematic bicycle model)
+So, at every time step, the optimization is started with the initial state (which is part of the constraints, given by the kinematic bicycle model)
 \begin{equation}\label{}
 	\bm{x}_k = \left[ 0,\ 0,\ 0,\ v,\ \tilde{y}_k,\ \tilde{\psi}_k \right].
 \end{equation}
